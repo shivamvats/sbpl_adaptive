@@ -23,7 +23,7 @@ AdaptivePlanner::AdaptivePlanner(
     tracker_(),
     forward_search_(forward_search),
     time_per_retry_plan_(5.0),
-    time_per_retry_track_(5.0),
+    time_per_retry_track_(0.0),
     target_eps_(-1.0),
     planning_eps_(1.0),
     tracking_eps_(1.0),
@@ -178,10 +178,11 @@ int AdaptivePlanner::replan(
             }
         }   break;
         case PlanMode::TRACKING: {
-            if (onTrackingState(time_remaining(), *solution)) {
-                *psolcost = track_cost_;
-                return true;
-            }
+            // Don't need the tracking phase.
+            //if (onTrackingState(time_remaining(), *solution)) {
+            //    *psolcost = track_cost_;
+            //    return true;
+            //}
         }   break;
         }
 
@@ -278,7 +279,8 @@ bool AdaptivePlanner::onPlanningState(
     adaptive_environment_->visualizeEnvironment();
     adaptive_environment_->visualizeStatePath(&plan_sol_, 0, 120, "planning_path");
 
-    if (adaptive_environment_->isExecutablePath(plan_sol_)) {
+    // A non-executable plan leads to tracking.
+    //if (adaptive_environment_->isExecutablePath(plan_sol_)) {
         sol = plan_sol_;
 
         ROS_INFO("Iteration Time: %.3f sec (avg: %.3f)", sbpl::to_seconds(iter_elapsed_), sbpl::to_seconds(time_elapsed_) / (iteration_ + 1.0));
@@ -293,7 +295,7 @@ bool AdaptivePlanner::onPlanningState(
         stat_->setTotalPlanningTime(sbpl::to_seconds(time_elapsed_));
         stat_->setPlanSize(sol.size());
         return true;
-    }
+    //}
 
     ROS_INFO("Signal tracking phase");
     plan_mode_ = PlanMode::TRACKING;
