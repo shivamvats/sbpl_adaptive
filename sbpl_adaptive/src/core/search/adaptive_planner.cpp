@@ -23,7 +23,7 @@ AdaptivePlanner::AdaptivePlanner(
     tracker_(),
     forward_search_(forward_search),
     time_per_retry_plan_(5.0),
-    time_per_retry_track_(0.0),
+    time_per_retry_track_(5.0),
     target_eps_(-1.0),
     planning_eps_(1.0),
     tracking_eps_(1.0),
@@ -178,11 +178,10 @@ int AdaptivePlanner::replan(
             }
         }   break;
         case PlanMode::TRACKING: {
-            // Don't need the tracking phase.
-            //if (onTrackingState(time_remaining(), *solution)) {
-            //    *psolcost = track_cost_;
-            //    return true;
-            //}
+            if (onTrackingState(time_remaining(), *solution)) {
+                *psolcost = track_cost_;
+                return true;
+            }
         }   break;
         }
 
@@ -197,6 +196,93 @@ int AdaptivePlanner::replan(
     stat_->setTotalPlanningTime(sbpl::to_seconds(time_elapsed()));
 
     return false;
+}
+int AdaptivePlanner::footstepReplan(
+    double allocated_time_secs,
+    std::vector<int>* solution,
+    int* psolcost)
+{
+    ROS_INFO("Begin Adaptive Planning...");
+
+    auto start_t = sbpl::clock::now();
+    time_per_retry_plan_ = allocated_time_secs;
+    double allowed_plan_time = allocated_time_secs;
+
+    ROS_INFO("Retry time limits: (Planning: %.4f) (Tracking: %.4f)", allocated_time_secs);
+
+    const auto allowed_time = sbpl::to_duration(allocated_time_secs);
+    auto time_elapsed = [&](){ return sbpl::clock::now() - start_t; };
+    auto time_remaining = [&]() { return allowed_time - time_elapsed(); };
+    auto time_expired = [&](){ return time_elapsed() > allowed_time; };
+
+    ROS_INFO("Begin plan phase on the first iteration");
+
+    plan_mode_ = PlanMode::PLANNING;
+    iteration_ = 0;
+    plan_cost_ = -1;
+    plan_sol_.clear();
+    pending_spheres_.clear();
+    iter_elapsed_ = sbpl::clock::duration::zero();
+    plan_elapsed_ = sbpl::clock::duration::zero();
+    time_elapsed_ = sbpl::clock::duration::zero();
+    last_plan_iter_ = -1;
+
+    adaptive_environment_->reset();
+    //pending_spheres_.push_back(start_state_id_);
+    //pending_spheres_.push_back(goal_state_id_);
+
+    if (planner_->set_start(start_state_id_) == 0) {
+        throw SBPL_Exception("planner failed to set the start state");
+    }
+    if (planner_->set_goal(goal_state_id_) == 0) {
+        throw SBPL_Exception("planner failed to set the goal state");
+    }
+
+    stat_->setInitialEps(planning_eps_);
+
+    planner_->set_initialsolution_eps(planning_eps_);
+    planner_->force_planning_from_scratch();
+    adaptive_environment_->setPlanMode();
+
+    // XXX Spheres stuff??
+
+    auto plan_start = sbpl::clock::now();
+    plan_sol_.clear();
+
+    int p_ret = planner_->replan(allowed_plan_time, &plan_sol_, psolcost);
+
+    auto plan_time = sbpl::clock::now() - plan_start;
+    stat_->addPlanningPhaseTime(sbpl::to_seconds(plan_time));
+    plan_elapsed_ += plan_time;
+    iter_elapsed_ += plan_time;
+    time_elapsed_ += plan_time;
+
+    if (!p_ret || plan_sol_.empty()) {
+        // TODO: an empty solution may be the correct solution and should
+        // report success and a correct suboptimality bound
+        ROS_ERROR("Solution could not be found within the allowed time (%.3fs.) after %d iterations", allowed_plan_time, iteration_);
+        adaptive_environment_->visualizeEnvironment();
+        num_iterations_ = iteration_;
+        stat_->setFinalEps(-1.0);
+        stat_->setSuccess(false);
+        stat_->setNumIterations(num_iterations_ + 1);
+        return false;
+    }
+
+    adaptive_environment_->visualizeEnvironment();
+    adaptive_environment_->visualizeStatePath(&plan_sol_, 0, 120, "planning_path");
+
+    *solution = plan_sol_;
+    ROS_INFO("Done in: %.3f sec", sbpl::to_seconds(time_elapsed_));
+
+    stat_->setFinalEps(planner_->get_final_epsilon());
+    stat_->setFinalPlanCost(plan_cost_);
+    stat_->setFinalTrackCost(plan_cost_);
+    stat_->setSuccess(true);
+    stat_->setTotalPlanningTime(sbpl::to_seconds(time_elapsed_));
+    stat_->setPlanSize(plan_sol_.size());
+
+    return true;
 }
 
 // Run the planning phase for a duration up to time_remaining. If an executable
@@ -280,7 +366,7 @@ bool AdaptivePlanner::onPlanningState(
     adaptive_environment_->visualizeStatePath(&plan_sol_, 0, 120, "planning_path");
 
     // A non-executable plan leads to tracking.
-    //if (adaptive_environment_->isExecutablePath(plan_sol_)) {
+    if (adaptive_environment_->isExecutablePath(plan_sol_)) {
         sol = plan_sol_;
 
         ROS_INFO("Iteration Time: %.3f sec (avg: %.3f)", sbpl::to_seconds(iter_elapsed_), sbpl::to_seconds(time_elapsed_) / (iteration_ + 1.0));
@@ -295,12 +381,13 @@ bool AdaptivePlanner::onPlanningState(
         stat_->setTotalPlanningTime(sbpl::to_seconds(time_elapsed_));
         stat_->setPlanSize(sol.size());
         return true;
-    //}
+    }
 
     ROS_INFO("Signal tracking phase");
     plan_mode_ = PlanMode::TRACKING;
     return false;
 }
+
 
 // Run the tracking phase for a duration up to time_remaining. If a solution is
 // found and is of acceptable cost, the result should be stored in \sol and

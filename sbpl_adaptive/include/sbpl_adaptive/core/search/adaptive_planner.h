@@ -77,6 +77,11 @@ public:
         std::vector<int>* solution,
         int* solcost);
 
+    int footstepReplan(
+        double allocated_time_secs,
+        std::vector<int>* solution,
+        int* solcost);
+
     bool set_time_per_retry(double t_plan, double t_track);
 
     /// \name Required Public Functions from SBPLPlanner
