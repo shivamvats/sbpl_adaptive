@@ -2,10 +2,12 @@ cmake_minimum_required(VERSION 2.8)
 project(sbpl_adaptive)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
-list(APPEND CMAKE_CXX_FLAGS "-std=c++11")
+#list(APPEND CMAKE_CXX_FLAGS "-std=c++11")
+add_definitions(-std=c++11)
 
+find_package(cmake_modules REQUIRED)
 find_package(Boost REQUIRED)
-find_package(Eigen3 REQUIRED)
+#find_package(Eigen3 REQUIRED)
 find_package(
     catkin
     REQUIRED

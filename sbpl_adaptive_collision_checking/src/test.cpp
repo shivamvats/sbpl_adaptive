@@ -6,6 +6,7 @@
  */
 
 #include <ros/ros.h>
+#include <ros/console.h>
 #include <sbpl_adaptive_collision_checking/sbpl_collision_model.h>
 #include <sbpl_adaptive_collision_checking/sbpl_collision_space.h>
 #include <sbpl_adaptive_collision_checking/urdf_collision_model.h>

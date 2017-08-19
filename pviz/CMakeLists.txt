@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 project(pviz)
 
 set(CMAKE_BUILD_TYPE Release)
-list(APPEND CMAKE_CXX_FLAGS "-std=c++11")
+#list(APPEND CMAKE_CXX_FLAGS "-std=c++11")
+add_definitions(-std=c++11)
 
 find_package(cmake_modules REQUIRED)
 

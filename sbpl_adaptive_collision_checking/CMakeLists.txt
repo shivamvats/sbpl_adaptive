@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project(sbpl_adaptive_collision_checking)
 
 set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+add_definitions(-std=c++11)
 
 execute_process(
 	COMMAND rosversion -d
@@ -66,13 +66,13 @@ add_library(
 target_link_libraries(sbpl_adaptive_collision_checking ${catkin_LIBRARIES})
 set_target_properties(sbpl_adaptive_collision_checking PROPERTIES COMPILE_FLAGS "-Wno-deprecated-declarations")
 
-add_executable(
-    sbpl_adaptive_collision_checking_test
-    src/test.cpp)
-target_link_libraries(
-    sbpl_adaptive_collision_checking_test
-    ${PROJECT_NAME}
-    ${catkin_LIBRARIES})
+#add_executable(
+#    sbpl_adaptive_collision_checking_test
+#    src/test.cpp)
+#target_link_libraries(
+#    sbpl_adaptive_collision_checking_test
+#    ${PROJECT_NAME}
+#    ${catkin_LIBRARIES})
 
 install(
     TARGETS sbpl_adaptive_collision_checking
