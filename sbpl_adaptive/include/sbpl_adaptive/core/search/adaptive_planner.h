@@ -129,6 +129,8 @@ public:
     double get_final_epsilon() override;
 
     void set_initialsolution_eps(double initialsolution_eps) override;
+
+    std::vector<int> get_plan_sol() { return plan_sol_; }
     ///@}
 
 private:

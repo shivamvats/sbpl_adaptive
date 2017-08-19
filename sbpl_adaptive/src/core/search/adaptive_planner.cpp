@@ -202,7 +202,7 @@ int AdaptivePlanner::footstepReplan(
     std::vector<int>* solution,
     int* psolcost)
 {
-    ROS_INFO("Begin Adaptive Planning...");
+   ROS_INFO("Begin Adaptive Planning...");
 
     auto start_t = sbpl::clock::now();
     time_per_retry_plan_ = allocated_time_secs;
